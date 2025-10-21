@@ -1,0 +1,156 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { validateEmail, checkDisposableDomain, checkMXRecords } = require('./emailValidator');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Simple API key validation
+const validateApiKey = (req, res, next) => {
+  const apiKey = req.headers['x-rapidapi-key'] || req.query.api_key;
+  
+  // For development, allow requests without API key
+  if (process.env.NODE_ENV === 'development') {
+    return next();
+  }
+  
+  // In production, require API key
+  if (!apiKey) {
+    return res.status(401).json({
+      error: 'API key required',
+      message: 'Please provide a valid API key via x-rapidapi-key header or api_key query parameter'
+    });
+  }
+  
+  // Simple validation - in production, you'd check against a database
+  if (apiKey.length < 10) {
+    return res.status(401).json({
+      error: 'Invalid API key',
+      message: 'API key format is invalid'
+    });
+  }
+  
+  next();
+};
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many requests',
+    message: 'Rate limit exceeded. Please try again later.'
+  }
+});
+
+// Middleware
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+app.use(limiter);
+
+// Basic request logging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - ${req.ip}`);
+  next();
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// API documentation endpoint
+app.get('/docs', (req, res) => {
+  res.json({
+    name: "Email Validator API",
+    version: "1.0.0",
+    description: "Validates email addresses and detects disposable domains",
+    endpoints: {
+      "/mailcheck": {
+        method: "GET",
+        parameters: {
+          email: "string (required) - Email address to validate",
+          api_key: "string (optional) - API key for authentication"
+        },
+        headers: {
+          "x-rapidapi-key": "string (optional) - API key for authentication"
+        },
+        description: "Validates email addresses and returns detailed information"
+      },
+      "/health": {
+        method: "GET",
+        description: "Health check endpoint"
+      }
+    }
+  });
+});
+
+// Main email validation endpoint
+app.get('/mailcheck', validateApiKey, async (req, res) => {
+  try {
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({
+        error: 'Email parameter is required',
+        message: 'Please provide an email address to validate',
+        example: '/mailcheck?email=test@example.com'
+      });
+    }
+
+    // Validate email format
+    const emailValidation = validateEmail(email);
+    
+    if (!emailValidation.isValid) {
+      return res.json({
+        email: email,
+        valid: false,
+        reason: emailValidation.reason,
+        domain: emailValidation.domain,
+        mx_host: null,
+        mx_info: null,
+        mx_ip: null
+      });
+    }
+
+    // Check if domain is disposable
+    const disposableCheck = await checkDisposableDomain(emailValidation.domain);
+    
+    // Get MX records
+    const mxRecords = await checkMXRecords(emailValidation.domain);
+
+    const response = {
+      email: email,
+      valid: !disposableCheck.isDisposable,
+      reason: disposableCheck.isDisposable ? 'Blacklist' : 'Valid',
+      domain: emailValidation.domain,
+      mx_host: mxRecords.primary,
+      mx_info: mxRecords.info,
+      mx_ip: mxRecords.ip
+    };
+
+    res.json(response);
+
+  } catch (error) {
+    console.error('Error validating email:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'An unexpected error occurred while validating the email',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Email Validator API running on port ${PORT}`);
+  console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`API docs: http://localhost:${PORT}/docs`);
+  console.log(`API endpoint: http://localhost:${PORT}/mailcheck?email=test@example.com`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+module.exports = app;
