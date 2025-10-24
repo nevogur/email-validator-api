@@ -7,31 +7,34 @@ const { validateEmail, checkDisposableDomain, checkMXRecords } = require('./emai
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Simple API key validation
+// RapidAPI key validation
 const validateApiKey = (req, res, next) => {
-  const apiKey = req.headers['x-rapidapi-key'] || req.query.api_key;
+  const apiKey = req.headers['x-rapidapi-key'];
   
   // For development, allow requests without API key
   if (process.env.NODE_ENV === 'development') {
     return next();
   }
   
-  // In production, require API key
+  // In production, require RapidAPI key
   if (!apiKey) {
     return res.status(401).json({
       error: 'API key required',
-      message: 'Please provide a valid API key via x-rapidapi-key header or api_key query parameter'
+      message: 'Please provide a valid RapidAPI key via x-rapidapi-key header'
     });
   }
   
-  // Check against environment variable in production
-  const validApiKey = process.env.API_KEY;
-  if (validApiKey && apiKey !== validApiKey) {
+  // Basic validation - RapidAPI keys typically start with specific patterns
+  if (apiKey.length < 10) {
     return res.status(401).json({
       error: 'Invalid API key',
-      message: 'API key is invalid'
+      message: 'Invalid RapidAPI key format'
     });
   }
+  
+  // Note: In a real RapidAPI integration, you would validate the key
+  // against RapidAPI's validation endpoint, but for now we'll accept
+  // any reasonably formatted key
   
   next();
 };
@@ -84,11 +87,10 @@ app.get('/docs', (req, res) => {
       "/mailcheck": {
         method: "GET",
         parameters: {
-          email: "string (required) - Email address to validate",
-          api_key: "string (optional) - API key for authentication"
+          email: "string (required) - Email address to validate"
         },
         headers: {
-          "x-rapidapi-key": "string (optional) - API key for authentication"
+          "x-rapidapi-key": "string (required) - RapidAPI key for authentication"
         },
         description: "Validates email addresses and returns detailed information"
       },

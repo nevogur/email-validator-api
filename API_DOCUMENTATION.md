@@ -6,9 +6,10 @@ https://your-railway-url.railway.app
 ```
 
 ## Authentication
-Include your API key in requests using one of these methods:
-- Header: `x-rapidapi-key: your-api-key`
-- Query parameter: `?api_key=your-api-key`
+Include your RapidAPI key in the request header:
+- Header: `x-rapidapi-key: your-rapidapi-key`
+
+**Note:** This API is designed for RapidAPI marketplace. Users will get their API key from RapidAPI, not from this service directly.
 
 ## Endpoints
 
@@ -37,7 +38,7 @@ GET /mailcheck?email={email_address}
 **Example Request:**
 ```bash
 curl "https://your-railway-url.railway.app/mailcheck?email=test@gmail.com" \
-  -H "x-rapidapi-key: your-api-key"
+  -H "x-rapidapi-key: your-rapidapi-key"
 ```
 
 **Success Response:**
@@ -98,7 +99,7 @@ curl "https://your-railway-url.railway.app/mailcheck?email=test@gmail.com" \
 ```json
 {
   "error": "API key required",
-  "message": "Please provide a valid API key via x-rapidapi-key header or api_key query parameter"
+  "message": "Please provide a valid RapidAPI key via x-rapidapi-key header"
 }
 ```
 
@@ -136,19 +137,19 @@ curl "https://your-railway-url.railway.app/mailcheck?email=test@gmail.com" \
 ### Valid Email
 ```bash
 curl "https://your-railway-url.railway.app/mailcheck?email=user@company.com" \
-  -H "x-rapidapi-key: your-api-key"
+  -H "x-rapidapi-key: your-rapidapi-key"
 ```
 
 ### Disposable Email
 ```bash
 curl "https://your-railway-url.railway.app/mailcheck?email=test@10minutemail.com" \
-  -H "x-rapidapi-key: your-api-key"
+  -H "x-rapidapi-key: your-rapidapi-key"
 ```
 
 ### Invalid Format
 ```bash
 curl "https://your-railway-url.railway.app/mailcheck?email=not-an-email" \
-  -H "x-rapidapi-key: your-api-key"
+  -H "x-rapidapi-key: your-rapidapi-key"
 ```
 
 ## Support
