@@ -7,6 +7,9 @@ const { validateEmail, checkDisposableDomain, checkMXRecords } = require('./emai
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for Railway deployment (fixes rate limiting with X-Forwarded-For header)
+app.set('trust proxy', 1);
+
 // RapidAPI key validation
 const validateApiKey = (req, res, next) => {
   const apiKey = req.headers['x-rapidapi-key'] || req.headers['X-RapidAPI-Key'];
