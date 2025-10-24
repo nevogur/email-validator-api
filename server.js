@@ -24,21 +24,31 @@ const validateApiKey = (req, res, next) => {
     });
   }
   
-  // Simple validation - in production, you'd check against a database
-  if (apiKey.length < 10) {
+  // Check against environment variable in production
+  const validApiKey = process.env.API_KEY;
+  if (validApiKey && apiKey !== validApiKey) {
     return res.status(401).json({
       error: 'Invalid API key',
-      message: 'API key format is invalid'
+      message: 'API key is invalid'
     });
   }
   
   next();
 };
 
-// Rate limiting
-const limiter = rateLimit({
+// Rate limiting with different limits for different endpoints
+const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many requests',
+    message: 'Rate limit exceeded. Please try again later.'
+  }
+});
+
+const strictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // stricter limit for validation endpoint
   message: {
     error: 'Too many requests',
     message: 'Rate limit exceeded. Please try again later.'
@@ -49,11 +59,13 @@ const limiter = rateLimit({
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-app.use(limiter);
+app.use(generalLimiter);
 
-// Basic request logging
+// Enhanced request logging
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - ${req.ip}`);
+  const timestamp = new Date().toISOString();
+  const userAgent = req.get('User-Agent') || 'Unknown';
+  console.log(`${timestamp} - ${req.method} ${req.path} - ${req.ip} - ${userAgent}`);
   next();
 });
 
@@ -89,7 +101,7 @@ app.get('/docs', (req, res) => {
 });
 
 // Main email validation endpoint
-app.get('/mailcheck', validateApiKey, async (req, res) => {
+app.get('/mailcheck', strictLimiter, validateApiKey, async (req, res) => {
   try {
     const { email } = req.query;
     
