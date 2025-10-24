@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 
 // RapidAPI key validation
 const validateApiKey = (req, res, next) => {
-  const apiKey = req.headers['x-rapidapi-key'];
+  const apiKey = req.headers['x-rapidapi-key'] || req.headers['X-RapidAPI-Key'];
   
   // For development, allow requests without API key
   if (process.env.NODE_ENV === 'development') {
